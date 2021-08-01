@@ -84,7 +84,7 @@ namespace dotnet_cs_api.Controllers
             if (tblProduct.Image != null)
             {
                 var fileName = Path.GetFileName(tblProduct.Image.FileName);
-                var fileNameToSave = "wwwroot/public/"+fileName;
+                var fileNameToSave = "wwwroot/public/" + fileName;
                 using (var stream = new FileStream(fileNameToSave, FileMode.Create))
                 {
                     await tblProduct.Image.CopyToAsync(stream);
@@ -99,9 +99,26 @@ namespace dotnet_cs_api.Controllers
                 _context.TblProducts.Add(tblProduct);
                 await _context.SaveChangesAsync();
                 return CreatedAtAction("GetTblProduct", new { id = tblProduct.ProductId }, tblProduct);
-            }else{
+            }
+            else
+            {
                 return BadRequest();
             }
+        }
+
+        //update qty value by bought amount per order
+        [HttpPost]
+        [Route("qty")]
+        public ActionResult UpdateQty(TblProduct product)
+        {
+           var quantity = _context.TblProducts.FirstOrDefault(p => p.ProductId == product.ProductId);
+            if (quantity != null)
+            {
+                quantity.Quantity =  quantity.Quantity - product.Quantity;
+                _context.SaveChanges();
+                return Ok(quantity);
+            }
+            return NoContent();
         }
 
         // DELETE: api/Products/5
@@ -119,6 +136,7 @@ namespace dotnet_cs_api.Controllers
 
             return NoContent();
         }
+
 
         private bool TblProductExists(int id)
         {

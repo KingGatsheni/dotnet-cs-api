@@ -21,7 +21,7 @@ namespace dotnet_cs_api.Controllers
         }
 
 
-        // POST: api/Customers
+        // POST: account/Customers/register
         //Registers a customer and Hash password
         [HttpPost]
         [Route("register")]
@@ -33,7 +33,9 @@ namespace dotnet_cs_api.Controllers
                 _context.TblCustomers.Add(customer);
                 await _context.SaveChangesAsync();
                 return Ok(new { fullName = customer.FirstName + customer.LastName, email = customer.Email });
-            }else{
+            }
+            else
+            {
                 return BadRequest("User With Same Email Already Exists");
             }
 
@@ -41,34 +43,53 @@ namespace dotnet_cs_api.Controllers
 
 
         //Login method with hashed password
+        // POST: account/Customers/login
         [HttpPost]
         [Route("login")]
-        public ActionResult<TblCustomer> Login(string email, string password, TblCustomer customer)
+        public ActionResult<TblCustomer> Login(TblCustomer customer)
         {
-            var account = checkUser(email, password);
-            if (account != null)
+            var user = _context.TblCustomers.FirstOrDefault(c => c.Email.Equals(customer.Email));
+            if (user == null)
             {
-                return BadRequest("Email or Password is not valid");
+                return Unauthorized();
             }
             else
             {
-                return Ok(new { loggedAs = customer.Email });
-            }
-
-        }
-
-
-        private TblCustomer checkUser(string email, string password)
-        {
-            var account = _context.TblCustomers.SingleOrDefault(a => a.Email.Equals(email));
-            if (account != null)
-            {
-                if (BCrypt.Net.BCrypt.Verify(password, account.Password))
+                if (!BCrypt.Net.BCrypt.Verify(customer.Password, user.Password))
                 {
-                    return account;
+                    return Unauthorized();
+                }
+                else
+                {
+                    HttpContext.Session.SetString("Email", customer.Email);
+                    return Ok(new { UserSessionEmail = HttpContext.Session.GetString("Email") });
                 }
             }
-            return null;
+        }
+
+        // set the user session to logout
+        [HttpGet]
+        [Route("logout")]
+        public IActionResult Logout()
+        {
+            HttpContext.Session.Remove("Email");
+            return Ok(new { loggedState = "user Signed out" });
+        }
+
+        //update user password if forgotten
+        [HttpPost]
+        [Route("update")]
+        public IActionResult Update(TblCustomer customer)
+        {
+            var user = _context.TblCustomers.FirstOrDefault(c => c.CustomerId == customer.CustomerId);
+            if (user != null)
+            {
+                user.Password = BCrypt.Net.BCrypt.HashPassword(customer.Password) ;
+                _context.SaveChanges();
+                return Ok(new {password = "password changed"});
+            }
+
+            return NoContent();
         }
     }
 }
