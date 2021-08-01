@@ -27,12 +27,16 @@ namespace dotnet_cs_api.Controllers
         [Route("register")]
         public async Task<ActionResult<TblCustomer>> Register(TblCustomer customer)
         {
-            var user = _context.TblCustomers.SingleOrDefault(a => a.Email.Equals(customer.Email));
-            customer.Password = BCrypt.Net.BCrypt.HashPassword(customer.Password);
-            _context.TblCustomers.Add(customer);
-            await _context.SaveChangesAsync();
+            if (!_context.TblCustomers.Any(a => a.Email == customer.Email))
+            {
+                customer.Password = BCrypt.Net.BCrypt.HashPassword(customer.Password);
+                _context.TblCustomers.Add(customer);
+                await _context.SaveChangesAsync();
+                return Ok(new { fullName = customer.FirstName + customer.LastName, email = customer.Email });
+            }else{
+                return BadRequest("User With Same Email Already Exists");
+            }
 
-            return Ok(new { fullName = customer.FirstName + customer.LastName, email = customer.Email });
         }
 
 
@@ -48,7 +52,6 @@ namespace dotnet_cs_api.Controllers
             }
             else
             {
-                HttpContext.Session.SetString("Email", email);
                 return Ok(new { loggedAs = customer.Email });
             }
 
