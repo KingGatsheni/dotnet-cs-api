@@ -11,6 +11,7 @@ using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.Identity;
 
 namespace dotnet_cs_api.Controllers
 {
@@ -71,15 +72,17 @@ namespace dotnet_cs_api.Controllers
                     }
                     else
                     {
+                        IdentityOptions _options = new IdentityOptions();
                         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_iconfiguration["Jwt:Key"]));
                         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
                         var token = new JwtSecurityToken(
                            claims: new Claim[]{
-                                new Claim(ClaimTypes.Name, user.FirstName),
-                                new Claim(ClaimTypes.Name, user.LastName),
-                                new Claim(ClaimTypes.Name, user.Email),
-                                new Claim(ClaimTypes.Name, user.PhoneNumber),
-                                new Claim(ClaimTypes.Name, user.Residence),
+                                new Claim(JwtRegisteredClaimNames.Sub, user.CustomerId.ToString()),
+                                new Claim(JwtRegisteredClaimNames.Sub, user.FirstName),
+                                new Claim(JwtRegisteredClaimNames.Sub, user.LastName),
+                                new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+                                new Claim(JwtRegisteredClaimNames.Sub, user.PhoneNumber),
+                                new Claim(JwtRegisteredClaimNames.Sub, user.Residence),
                            },
                             expires: DateTime.Now.AddMinutes(60),
                             signingCredentials: credentials);
