@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using dotnet_cs_api.Models;
+using Microsoft.Extensions.Configuration;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace dotnet_cs_api.Controllers
 {
@@ -14,10 +19,12 @@ namespace dotnet_cs_api.Controllers
     public class CustomersController : ControllerBase
     {
         private readonly csDbContext _context;
+        public IConfiguration _iconfiguration;
 
-        public CustomersController(csDbContext context)
+        public CustomersController(IConfiguration configuration, csDbContext context)
         {
             _context = context;
+            _iconfiguration = configuration;
         }
 
 
@@ -32,7 +39,7 @@ namespace dotnet_cs_api.Controllers
                 customer.Password = BCrypt.Net.BCrypt.HashPassword(customer.Password);
                 _context.TblCustomers.Add(customer);
                 await _context.SaveChangesAsync();
-                return Ok(new { fullName = customer.FirstName + customer.LastName, email = customer.Email });
+                return Ok(customer);
             }
             else
             {
@@ -45,35 +52,48 @@ namespace dotnet_cs_api.Controllers
         //Login method with hashed password
         // POST: account/Customers/login
         [HttpPost]
-        [Route("login")]
+        [Route("auth")]
         public ActionResult<TblCustomer> Login(TblCustomer customer)
         {
-            var user = _context.TblCustomers.FirstOrDefault(c => c.Email.Equals(customer.Email));
-            if (user == null)
+
+            if (customer != null && customer.Email != null)
             {
-                return Unauthorized();
-            }
-            else
-            {
-                if (!BCrypt.Net.BCrypt.Verify(customer.Password, user.Password))
+                var user = _context.TblCustomers.FirstOrDefault(c => c.Email.Equals(customer.Email));
+                if (user == null)
                 {
-                    return Unauthorized();
+                    return BadRequest("User Does Not Exist");
                 }
                 else
                 {
-                    HttpContext.Session.SetString("Email", customer.Email);
-                    return Ok(new { UserSessionEmail = HttpContext.Session.GetString("Email") });
+                    if (!BCrypt.Net.BCrypt.Verify(customer.Password, user.Password))
+                    {
+                        return BadRequest("Invalid Credentials");
+                    }
+                    else
+                    {
+                        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_iconfiguration["Jwt:Key"]));
+                        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+                        var token = new JwtSecurityToken(
+                           claims: new Claim[]{
+                                new Claim(ClaimTypes.Name, user.FirstName),
+                                new Claim(ClaimTypes.Name, user.LastName),
+                                new Claim(ClaimTypes.Name, user.Email),
+                                new Claim(ClaimTypes.Name, user.PhoneNumber),
+                                new Claim(ClaimTypes.Name, user.Residence),
+                           },
+                            expires: DateTime.Now.AddMinutes(60),
+                            signingCredentials: credentials);
+                        var genToken = new JwtSecurityTokenHandler().WriteToken(token);
+                        return Ok(new { Authentication = true, Token = genToken });
+                    }
+
                 }
             }
-        }
+            else
+            {
+                return BadRequest();
+            }
 
-        // set the user session to logout
-        [HttpGet]
-        [Route("logout")]
-        public IActionResult Logout()
-        {
-            HttpContext.Session.Remove("Email");
-            return Ok(new { loggedState = "user Signed out" });
         }
 
         //update user password if forgotten
@@ -84,9 +104,9 @@ namespace dotnet_cs_api.Controllers
             var user = _context.TblCustomers.FirstOrDefault(c => c.CustomerId == customer.CustomerId);
             if (user != null)
             {
-                user.Password = BCrypt.Net.BCrypt.HashPassword(customer.Password) ;
+                user.Password = BCrypt.Net.BCrypt.HashPassword(customer.Password);
                 _context.SaveChanges();
-                return Ok(new {password = "password changed"});
+                return Ok(new { password = "password changed" });
             }
 
             return NoContent();

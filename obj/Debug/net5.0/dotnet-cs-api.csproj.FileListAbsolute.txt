@@ -137,3 +137,5 @@
 /home/sihle/WebProjects/dotnet-cs-api/bin/Debug/net5.0/Microsoft.AspNetCore.Mvc.NewtonsoftJson.dll
 /home/sihle/WebProjects/dotnet-cs-api/bin/Debug/net5.0/Newtonsoft.Json.Bson.dll
 /home/sihle/WebProjects/dotnet-cs-api/bin/Debug/net5.0/BCrypt.Net-Next.dll
+/home/sihle/WebProjects/dotnet-cs-api/bin/Debug/net5.0/JWT.dll
+/home/sihle/WebProjects/dotnet-cs-api/bin/Debug/net5.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
