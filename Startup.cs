@@ -24,6 +24,8 @@ namespace dotnet_cs_api
     public class Startup
     {
         private readonly IWebHostEnvironment _web;
+
+
         public Startup(IConfiguration configuration, IWebHostEnvironment web)
         {
             Configuration = configuration;
@@ -59,30 +61,21 @@ namespace dotnet_cs_api
                     }
                 });
             });
+            services.AddCors();
             services.AddDbContext<csDbContext>(op => op.UseSqlServer(Configuration.GetConnectionString("ConnectionString")));
-            services.AddCors(options =>
-            {
-
-                options.AddDefaultPolicy(
-                    builder => builder
-                    .AllowAnyOrigin()
-                    .AllowAnyMethod().
-                    AllowAnyHeader()
-                 );
-            });
             services.AddControllers().AddNewtonsoftJson(options => options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore);
-             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ClockSkew = TimeSpan.FromMinutes(60),
-                    IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Jwt:Key"]))
-                };
-            });
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+           {
+               options.TokenValidationParameters = new TokenValidationParameters
+               {
+                   ValidateIssuer = false,
+                   ValidateAudience = false,
+                   ValidateLifetime = true,
+                   ValidateIssuerSigningKey = true,
+                   ClockSkew = TimeSpan.FromMinutes(60),
+                   IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Jwt:Key"]))
+               };
+           });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -94,6 +87,12 @@ namespace dotnet_cs_api
                 app.UseSwagger();
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "dotnet_cs_api v1"));
             }
+            app.UseCors(options => options.
+            AllowAnyHeader()
+            .AllowAnyMethod()
+            .SetIsOriginAllowed(host => true)
+            .AllowCredentials()
+            );
             app.UseFileServer(new FileServerOptions
             {
                 FileProvider = new PhysicalFileProvider(
@@ -103,7 +102,6 @@ namespace dotnet_cs_api
             });
             app.UseHttpsRedirection();
             app.UseRouting();
-            app.UseCors();
             app.UseAuthentication();
             app.UseAuthorization();
             app.UseEndpoints(endpoints =>
